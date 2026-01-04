@@ -2,44 +2,7 @@
 const SUPABASE_URL = "https://ztwcpkaunjtaftvdirqd.supabase.co";
 const SUPABASE_KEY = "sb_publishable_ku_dam8A40EUXl5ss8SQww_EX_MCmWB";
 
-chrome.runtime.onInstalled.addListener(() => {
-    chrome.contextMenus.create({ id: "save-manual", title: "Manual Edit \"%s\"", contexts: ["selection"] });
-    chrome.contextMenus.create({ id: "smart-capture", title: "✨ Smart Capture (Quiz & Summary)", contexts: ["selection"] });
-});
 
-chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-    if (info.menuItemId === "save-manual") {
-        await chrome.storage.local.set({ draftSelection: info.selectionText, draftUrl: tab.url, draftTitle: tab.title });
-        chrome.windows.create({ url: "popup.html", type: "popup", width: 360, height: 600 });
-    }
-    if (info.menuItemId === "smart-capture") {
-        const { email } = await chrome.storage.local.get("email");
-        await setupOffscreenDocument("offscreen.html");
-
-        notify(tab.id, "AI", "Processing...", "info");
-
-        try {
-            const response = await chrome.runtime.sendMessage({
-                action: 'process_ai',
-                data: { text: info.selectionText, type: 'both' }
-            });
-
-            if (response && response.success) {
-                // Save Both
-                const { summary, quiz } = response.data;
-                await saveToSupabase(email, tab.title, summary, tab.url, 'summary');
-                await saveToSupabase(email, tab.title, quiz, tab.url, 'quiz');
-
-                notify(tab.id, "OK", "Captured Summary & Quiz!", "success");
-            } else {
-                notify(tab.id, "ERR", "AI Failed", "error");
-            }
-        } catch (e) {
-            console.error(e);
-            notify(tab.id, "ERR", "Error", "error");
-        }
-    }
-});
 
 async function saveToSupabase(email, title, content, url, format) {
     const payload = {
@@ -125,5 +88,73 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             }
         })();
         return true;
+    }
+
+    if (msg.action === 'save_alert') {
+        // Fire and forget from Popup perspective, but we handle it here
+        handleSaveAlert(msg.data).then(res => {
+            if (res.success) {
+                // If we knew the tabId, we could notify. But Popup usually closes.
+                // We can't easily notify the "active tab" reliably after popup close without passing tabId.
+                // But for now, just logging.
+                console.log("Saved alert via background");
+            }
+        });
+        // We don't necessarily need to sendResponse if popup closes immediately
+        sendResponse({ status: "processing" });
+        return false;
+    }
+});
+
+const BACKEND_URL = "http://localhost:8080";
+
+async function handleSaveAlert(data) {
+    try {
+        const res = await fetch(`${BACKEND_URL}/alerts`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        if (!res.ok) {
+            const txt = await res.text();
+            console.error("Backend Error:", txt);
+            return { success: false, error: txt };
+        }
+        return { success: true };
+    } catch (e) {
+        console.error("Network Error:", e);
+        return { success: false, error: e.message };
+    }
+}
+
+// Update context menu
+chrome.runtime.onInstalled.addListener(async () => {
+    // Clear existing to prevent "HighlightAgent" submenu grouping
+    await chrome.contextMenus.removeAll();
+
+    chrome.contextMenus.create({
+        id: "quick-save-2click",
+        title: "Add Reminder: \"%s\"",
+        contexts: ["selection"]
+    });
+});
+
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+    if (info.menuItemId === "quick-save-2click") {
+        // Open Popup Flow (User interpreted "2 click" as "Open the UI")
+        await chrome.storage.local.set({
+            draftSelection: info.selectionText,
+            draftUrl: tab.url,
+            draftTitle: tab.title
+        });
+
+        chrome.windows.create({
+            url: "popup.html",
+            type: "popup",
+            width: 400,
+            height: 680
+        });
     }
 });

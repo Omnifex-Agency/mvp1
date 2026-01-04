@@ -31,9 +31,9 @@ export const handler = async (event) => {
       return { statusCode: 200, headers, body: JSON.stringify({ summary }) };
     }
     if (httpMethod === "POST" && path === "/generate/quiz") {
-      const { text } = JSON.parse(body);
+      const { text, numQuestions } = JSON.parse(body);
       if (!text) return { statusCode: 400, headers, body: JSON.stringify({ message: "Text required" }) };
-      const quiz = await generateQuiz(text);
+      const quiz = await generateQuiz(text, numQuestions);
       return { statusCode: 200, headers, body: JSON.stringify({ quiz }) };
     }
     if (httpMethod === "GET" && path === "/alerts") {
@@ -80,8 +80,10 @@ async function createAlert(data) {
     finalContent = `## 📝 AI Summary\n${aiResult}\n\n## 📄 Original Text\n${content}`;
   } else if (format === 'quiz') {
     console.log("Generating quiz...");
-    aiResult = await generateQuiz(content);
-    finalContent = `## 🧠 AI Quiz\n${aiResult}\n\n## 📄 Original Text\n${content}`;
+    // Dynamic Question Count: Min 3, Max 10, approx 1 per 500 chars
+    const numQuestions = Math.max(3, Math.min(10, Math.ceil(content.length / 500)));
+    aiResult = await generateQuiz(content, numQuestions);
+    finalContent = `## 🧠 AI Quiz (${numQuestions} Questions)\n${aiResult}\n\n## 📄 Original Text\n${content}`;
   }
 
   // 2. SAVE TO SUPABASE

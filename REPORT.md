@@ -1,7 +1,7 @@
 # System Architecture & API Report
 
 **Status:** Live & Functional
-**AI Features:** Active (On-Device Transformers.js)
+**AI Features:** Active (Hybrid: Browser Native + Local Backend)
 **Current Date:** 2026-01-04
 **Extension Version:** 1.0 (Manifest V3)
 
@@ -9,11 +9,13 @@
 
 ## 1. Technological Stack
 
-We have evolved the architecture to a **fully client-heavy, edge-intelligent** system. This minimizes backend costs and dependency on external API keys (like OpenAI) by running AI directly in the user's browser.
+We have evolved the architecture to a **hybrid-intelligence** system. This maximizes performance using browser capabilities while ensuring robust fallback availability.
 
 *   **Frontend (Dashboard):** Next.js 16 (React) + Tailwind CSS (Premium "Deep Zinc" Theme) + Framer Motion.
 *   **Browser Extension:** Chrome Manifest V3 with **Offscreen Documents** for background execution.
-*   **AI Engine:** **Transformers.js** (WebAssembly), running `DistilBART` (Summary) and `Flan-T5` (Quiz) locally.
+*   **AI Engine:** 
+    *   **Primary:** Chrome `window.ai` (Gemini Nano) for instant, offline, privacy-first processing.
+    *   **Secondary:** Local Node.js Backend using `Transformers.js` (`LaMini-Flan-T5`) for reliable fallback.
 *   **Backend / Database:** Supabase (PostgreSQL) for storage and syncing.
 *   **API Interface:** Supabase REST API via `fetch` standard.
 
@@ -41,15 +43,17 @@ The database remains the central sync point for the extension and dashboard.
 ## 3. Core Workflows
 
 ### A. The "Smart Capture" Workflow (Extension)
-**Goal:** Zero-friction knowledge capture.
-1.  **Trigger:** User right-clicks text -> Selects **"✨ Smart Capture (Quiz & Summary)"**.
-2.  **Background Process (`offscreen.js`):**
-    *   The extension spawns a hidden `offscreen.html` worker.
-    *   This worker loads **Transformers.js** from CDN (ES Modules).
-    *   **Pipeline 1 (Summarization):** Runs `Xenova/distilbart-cnn-6-6` to compress the text.
-    *   **Pipeline 2 (Quiz Gen):** Runs `Xenova/LaMini-Flan-T5-783M` to generate a Q&A from the text.
-3.  **Storage:** Both results are immediately `POST`ed to Supabase as separate records.
-4.  **Feedback:** A premium **Shadow DOM Toast** appears on the webpage confirming success ("Summarized & Quiz Created!").
+**Goal:** Seamless, user-controlled knowledge capture.
+1.  **Trigger:** User right-clicks text -> Selects **"Add Reminder: [Text]"**.
+2.  **Interaction:** The **HighlightAgent Popup** opens immediately with pre-filled content.
+3.  **Refinement:**
+    *   User selects **"Summary"** or **"Quiz"**.
+    *   **Dynamic Quiz:** The system calculates the ideal question count (3-10) based on text length.
+4.  **Backend Process:**
+    *   The extension attempts to use `window.ai`.
+    *   If unavailable, it transparently requests the Local Backend (`localhost:8080`) to process the text.
+5.  **Storage:** The final formatted content is saved to Supabase.
+6.  **Feedback:** The popup closes instantly upon save ("Fire and Forget"), and a **Toast Notification** confirms success on the page.
 
 ### B. The Premium Dashboard
 **Goal:** Beautiful consumption of captured knowledge.
@@ -58,11 +62,11 @@ The database remains the central sync point for the extension and dashboard.
     *   **List View:** Cards with "Summary" and "Quiz" badges.
     *   **Detail Modal:** A glassmorphic modal overlay.
         *   **Smart Rendering:**
-            *   *Summaries* are parsed into clean bullet lists with blue accents.
-            *   *Quizzes* are parsed into structured "Question / Option / Answer" blocks with interactive styling.
+            *   *Summaries* are parsed into clean bullet lists.
+            *   *Quizzes* are parsed into structured "Question / Option / Answer" blocks.
 3.  **Styling:**
-    *   **Theme:** "Deep Zinc" (Dark Mode).
-    *   **Tech:** Tailwind CSS v4 (@theme configuration) + Custom Scrollbars.
+    *   **Theme:** "Deep Zinc" (Dark Mode) with Violet Accents.
+    *   **Tech:** Tailwind CSS + Custom Scrollbars.
 
 ---
 
@@ -74,10 +78,11 @@ The database remains the central sync point for the extension and dashboard.
 ---
 
 ## 5. Recent Achievements
-*   **Bypassed Chrome Flags:** Successfully moved from unstable `window.ai` to robust `Transformers.js` (Wasm), ensuring the AI works on any standard Chrome instance without special configuration.
-*   **Fixed Styling Issues:** Resolved Tailwind v4 configuration errors (PostCSS), restoring the premium look and feel.
-*   **Unified UX:** Simplified the context menu to a single "Do It All" button.
+*   **Premium UI Overhaul:** Re-designed the extension popup with a high-fidelity "HighlightAgent" dark theme, featuring glassmorphism, smooth animations, and optimized typography (Inter).
+*   **Dynamic AI Logic:** Implemented smart question counting (approx 1 question per 500 chars) for quizzes, scaling from 3 to 10 questions automatically.
+*   **Context Menu Fix:** Resolved issues with nested menus by enforcing a strict cleanup routine, ensuring the "Add Reminder" option is always top-level and accessible.
+*   **Hybrid AI Strategy:** Successfully implemented the fallback mechanism from `window.ai` to the local backend, ensuring 100% reliability.
 
 ## 6. Next Steps
-*   **Email Notifications:** Implement the backend cron job (Supabase Edge Function or external scheduler) to read `due` alerts and email them to the user.
+*   **Email Notifications:** Implement the backend cron job to read `due` alerts and email them to the user.
 *   **Multi-User Auth:** Re-enable the login gate when ready for public multi-tenant deployment.

@@ -12,6 +12,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 });
 
 async function processText({ text, type }) {
+    // Determine dynamic values
+    const numQuestions = Math.max(3, Math.min(10, Math.ceil(text.length / 500)));
+
     // Helper to generate content
     const generate = async (mode) => {
         // 1. Try Real AI (Gemini Nano - The Lightweight Browser Model)
@@ -24,7 +27,7 @@ async function processText({ text, type }) {
                 // Optimized Lightweight Prompts
                 const prompt = mode === 'summary'
                     ? `Summarize this text in 3 short bullet points. Be concise.\n\nText: ${text}`
-                    : `Create a 3-question multiple choice quiz with answers. Format:\nQ1: ...\nA) ...\nAnswer: ...\n\nText: ${text}`;
+                    : `Create a ${numQuestions}-question multiple choice quiz with answers. Format:\nQ1: ...\nA) ...\nAnswer: ...\n\nText: ${text}`;
 
                 const stream = session.promptStreaming(prompt);
                 let out = "";
@@ -46,7 +49,7 @@ async function processText({ text, type }) {
             const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text })
+                body: JSON.stringify({ text, numQuestions })
             });
 
             if (response.ok) {

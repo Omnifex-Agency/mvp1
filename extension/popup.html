@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8">
-  <title>Omnifex</title>
+  <title>HighlightAgent</title>
   <link rel="stylesheet" href="popup.css">
 </head>
 
@@ -11,44 +11,42 @@
 
   <!-- SETUP VIEW -->
   <div id="setup-view" class="view hidden">
-    <div style="margin-bottom: 20px;">
-      <div
-        style="width: 40px; height: 40px; background: linear-gradient(135deg, #7c3aed, #4f46e5); border-radius: 10px; margin: 0 auto 15px auto; display:flex; align-items:center; justify-content:center; font-weight:bold; color:white;">
-        O</div>
-      <h2 style="margin:0; font-size: 20px;">Welcome</h2>
-      <p style="color: #a1a1aa; font-size: 13px; margin-top: 5px;">Connect your dashboard to start.</p>
+    <div class="setup-card">
+      <div class="setup-icon">H</div>
+      <h2>Welcome</h2>
+      <p class="subtitle">Connect your email to start capturing ideas.</p>
     </div>
-    <input type="email" id="user-email" class="input-field" placeholder="name@example.com" />
-    <button id="save-setup" class="save-btn">Get Started</button>
+
+    <div style="margin-top: auto; padding-bottom: 20px;">
+      <label>Your Email</label>
+      <input type="email" id="user-email" placeholder="name@example.com" />
+      <button id="save-setup" class="save-btn">Get Started</button>
+    </div>
   </div>
 
   <!-- PROCESSING VIEW -->
   <div id="processing-view" class="view hidden"
-    style="align-items: center; justify-content: center; text-align: center;">
+    style="justify-content: center; align-items: center; text-align: center;">
     <div
-      style="width: 60px; height: 60px; background: rgba(16, 185, 129, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 20px;">
+      style="width: 72px; height: 72px; background: rgba(16, 185, 129, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 24px; border: 1px solid rgba(16, 185, 129, 0.2);">
       <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"
         stroke-linecap="round" stroke-linejoin="round">
         <polyline points="20 6 9 17 4 12"></polyline>
       </svg>
     </div>
-    <h3 style="margin: 0; color: #f4f4f5; font-size: 18px;">Saved!</h3>
-    <p style="color: #a1a1aa; font-size: 14px; margin-top: 8px;">Closing in a moment...</p>
+    <h3 style="margin: 0; font-size: 20px; font-weight: 600;">Saved Successfully!</h3>
   </div>
 
   <!-- MAIN VIEW -->
   <div id="main-view" class="view">
     <div class="header">
-      <span class="logo">Omnifex</span>
-      <div class="avatar">JD</div>
+      <span class="logo">HighlightAgent</span>
+      <!-- <div class="avatar">Me</div> -->
     </div>
 
     <div class="input-area">
-      <input type="text" id="title" class="title-input" placeholder="Untitled Idea..." />
-      <textarea id="content" class="content-input" placeholder="What did you learn today?"></textarea>
-
-      <!-- AI Tools -->
-      <!-- AI Tools Removed (Backend Automation) -->
+      <input type="text" id="title" class="title-input" placeholder="Title your thought..." />
+      <textarea id="content" class="content-input" placeholder="What requires your future attention?"></textarea>
     </div>
 
     <div class="controls-section">
@@ -71,17 +69,17 @@
         <div class="segmented-control">
 
           <label class="segment">
-            <input type="radio" name="format" value="full" class="segment-input" />
+            <input type="radio" name="format" value="full" />
             <span>Full Text</span>
           </label>
 
           <label class="segment">
-            <input type="radio" name="format" value="summary" class="segment-input" checked />
+            <input type="radio" name="format" value="summary" checked />
             <span>Summary</span>
           </label>
 
           <label class="segment">
-            <input type="radio" name="format" value="quiz" class="segment-input" />
+            <input type="radio" name="format" value="quiz" />
             <span>Quiz</span>
           </label>
 
@@ -91,7 +89,14 @@
     </div>
 
     <div class="footer">
-      <button id="save-btn" class="save-btn">Save Learning</button>
+      <button id="save-btn" class="save-btn">
+        <span>Save Reminder</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+          stroke-linecap="round" stroke-linejoin="round" style="margin-left: 4px;">
+          <line x1="22" y1="2" x2="11" y2="13"></line>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+        </svg>
+      </button>
       <div id="status"></div>
     </div>
   </div>

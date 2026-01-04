@@ -12,8 +12,8 @@ const BACKEND_URL = "http://localhost:8080";
 
 document.addEventListener('DOMContentLoaded', async () => {
     // If opened as a window, ensure size (sometimes chrome.windows.create is buggy on size)
-    if (window.innerHeight < 600) {
-        window.resizeTo(360, 650);
+    if (window.innerHeight < 680) {
+        window.resizeTo(400, 680);
     }
 
     const storage = await chrome.storage.local.get(['email', 'draftSelection', 'draftTitle', 'draftUrl']);
@@ -134,9 +134,7 @@ async function saveAlert() {
         reminderDate = d.toISOString().split('T')[0];
     }
 
-    // ILLUSION: Show success immediately
-    showView('processing-view');
-
+    // HIDE immediately functionality: Send to background and close
     const payload = {
         email: storage.email || "anonymous@omnifex.com",
         title: title || "Untitled Snippet",
@@ -147,35 +145,7 @@ async function saveAlert() {
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
     };
 
-    try {
-        // We await the fetch only to ensure it sends before we close logic-wise
-        // But to the user, they already see "Saved!" so they might close the window themselves, which is fine (kills request).
-        // If they wait 2 seconds, it closes automatically.
-        const res = await fetch(`${BACKEND_URL}/alerts`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(payload)
-        });
-
-        if (res.ok) {
-            // Success - Close Window
-            window.close();
-        } else {
-            // If it failed, we should probably tell them, but user asked for "Illusion"
-            // We will stick to the illusion unless it's a critical auth error. 
-            // Since we are "processing", showing an error now might jolt them. 
-            // We'll log it and close.
-            const txt = await res.text();
-            console.error("Backend Error:", txt);
-            window.close();
-        }
-
-    } catch (e) {
-        console.error("Network Error:", e);
-        // Even on net error, if we promised "Illusion", maybe we should prompt?
-        // But let's close to not break the illusion flow. The user wants "Click -> Done".
-        window.close();
-    }
+    // Offload to background so we can close immediately
+    chrome.runtime.sendMessage({ action: 'save_alert', data: payload });
+    window.close();
 }

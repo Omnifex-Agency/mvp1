@@ -1,72 +1,80 @@
 # HighlightAgent (MVP)
 
-A browser-extension-first retention system. Capture snippets, schedule reminders, and receive AI-generated summaries via email.
+HighlightAgent is a powerful Chrome Extension that transforms your browser reading into actionable knowledge. It allows you to check context, capture ideas, summarize content using AI, and set spaced repetition reminders—all without leaving your current page.
 
-## 📂 Project Structure
+## 🚀 Features
 
-- **`backend/`**: AWS Serverless Application (SAM).
-    - `template.yaml`: Defines DynamoDB (Single Table), Lambdas, API Gateway.
-    - `src/handlers/`: API and Scheduler logic.
-- **`extension/`**: Chrome Extension (Manifest V3).
-- **`dashboard/`**: Vercel Next.js Web App for managing alerts.
+*   **One-Click Capture via Context Menu**: Right-click any text to immediately capture it.
+*   **Intelligent Popup**:
+    *   **Auto-filled Content**: Opens with your selected text and page title pre-filled.
+    *   **Smart Reminders**: "Tomorrow", "Weekend", "Next Week", or custom dates.
+    *   **Format Selection**: Choose between saving full text, AI summaries, or AI quizzes.
+*   **Hybrid AI Engine**:
+    *   **Primary**: Uses Chrome's built-in **Gemini Nano** (`window.ai`) for instant, private, offline AI processing.
+    *   **Fallback**: Seamlessly switches to a **Local Backend** running `LaMini-Flan-T5` if the browser AI is unavailable.
+*   **Premium UI**: A sleek, deep-zinc dark mode interface with glassmorphism effects and smooth animations.
 
----
+## 🛠 Architecture
 
-## 🚀 Getting Started
+The project consists of two main components:
 
-### 1. Backend Setup (AWS)
+1.  **Chrome Extension (`/extension`)**:
+    *   Manifest V3 architecture.
+    *   **Background Service Worker**: Handles context menus and API communication.
+    *   **Offscreen Document**: Manages AI model execution (Hybrid logic).
+    *   **Content Script**: Provides visual toast notifications.
+    *   **Popup UI**: Built with pure HTML/CSS/JS for maximum speed and zero build-step complexity.
 
-1. Navigate to `backend/src`:
-   ```bash
-   cd backend/src
-   npm install
-   ```
-2. Configure Environment:
-   - Rename `.env.example` to `.env`.
-   - Add your `OPENAI_API_KEY` (required for Summary/Quiz).
-   - Add `SENDER_EMAIL` (Must be a verified identity in AWS SES).
-3. Deploy (Requires AWS CLI + SAM CLI):
-   ```bash
-   cd ..
-   sam deploy --guided
-   ```
-   - Note the **API Gateway URL** from the outputs (e.g., `https://xxxx.execute-api.us-east-1.amazonaws.com/Prod/`).
+2.  **Local Backend (`/backend`)**:
+    *   **Express.js** server acting as a local API.
+    *   **Transformers.js**: Runs the `Xenova/LaMini-Flan-T5-248M` model locally for fallback processing.
+    *   **Supabase Integration**: Stores user alerts and processed content.
 
-   *(Alternative: For local dev, you can use `sam local start-api` but you need Docker running).*
+## 📦 Installation
 
-### 2. Dashboard Setup (Web)
+### 1. Prerequisites
+*   Node.js (v18+)
+*   Google Chrome (Dev/Canary channel recommended for experimental AI features)
 
-1. Navigate to `dashboard`:
-   ```bash
-   cd dashboard
-   npm install
-   npm run dev
-   ```
-2. Open [http://localhost:3000](http://localhost:3000).
-3. Enter your email (e.g., `me@example.com`) and the **API URL** from Step 1.
-   - *Note: If running local backend, use `http://localhost:3000` (but SAM local runs on port 3000 too, so one needs to change port).*
+### 2. Backend Setup
+1.  Navigate to the backend directory:
+    ```bash
+    cd backend
+    ```
+2.  Install dependencies:
+    ```bash
+    npm install
+    ```
+3.  Start the local server:
+    ```bash
+    node src/server.js
+    ```
+    *Server runs on `http://localhost:8080`*
 
-### 3. Extension Setup (Chrome)
+### 3. Extension Setup
+1.  Open Chrome and navigate to `chrome://extensions`.
+2.  Enable **Developer Mode** (top right toggle).
+3.  Click **Load unpacked**.
+4.  Select the `extension` folder from this project.
+5.  **Important**: If you are using `window.ai`, ensure the `Optimization Guide On Device Model` flag is enabled in `chrome://flags`.
 
-1. Open Chrome and go to `chrome://extensions`.
-2. Enable **Developer Mode** (top right).
-3. Click **Load unpacked**.
-4. Select the `extension/` folder in this project.
-5. Click the Extension Icon.
-6. **Setup**: Enter the same email (`me@example.com`) and **API URL**.
+## 📖 Usage
 
----
+1.  **Select text** on any webpage.
+2.  **Right-click** and choose **"Add Reminder: [Your Text]"**.
+3.  The **HighlightAgent Popup** will open.
+    *   Edit the title or content if needed.
+    *   Select **Summary** or **Quiz** to use AI.
+    *   Pick a **Reminder Date**.
+4.  Click **Save Reminder**.
+    *   The popup automatically saves to the backend and closes.
+    *   You receive a visual confirmation.
 
-## 🧪 Usage Flow
+## 🤖 AI Logic (Under the Hood)
 
-1. **Capture**: Highlight text on any website. Right-click "Save to HighlightAgent" OR click the extension icon.
-2. **Schedule**: Choose "Tomorrow" or "3 Days". Select "Summary" format.
-3. **Dashboard**: Refresh the dashboard to see your new pending alert.
-4. **Email**: The Scheduler runs hourly.
-   - *Manual Test:* You can manually invoke the `SchedulerFunction` via AWS Console to trigger an immediate check.
+The system uses a "Race to Competence" strategy:
+1.  **Browser AI**: First, it attempts to access `window.ai`. If available, it generates summaries/quizzes locally in the browser with zero latency.
+2.  **Local Fallback**: If `window.ai` fails or is dismissed, it sends a payload to `localhost:8080`. The local Node.js server uses `Transformers.js` to process the text and returns the result.
 
-## ⚠️ Important Nuances
-
-- **Idempotency**: The system ensures you don't receive duplicate emails even if the scheduler retries.
-- **Timezones**: The scheduler sends emails when it creates a "9 AM" match in your local timezone.
-- **AI Cost**: OpenAI key is used only for Summary/Quiz formats.
+## 📝 License
+Proprietary / MVP Status.
