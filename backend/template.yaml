@@ -6,7 +6,8 @@ Description: >
 
 Globals:
   Function:
-    Timeout: 15
+    Timeout: 120
+    MemorySize: 3008
     Runtime: nodejs20.x
     Architectures:
       - x86_64
@@ -96,6 +97,18 @@ Resources:
             RestApiId: !Ref HighlightAgentApi
             Path: /alerts/{id}
             Method: DELETE
+        GenerateSummary:
+          Type: Api
+          Properties:
+            RestApiId: !Ref HighlightAgentApi
+            Path: /generate/summary
+            Method: POST
+        GenerateQuiz:
+          Type: Api
+          Properties:
+            RestApiId: !Ref HighlightAgentApi
+            Path: /generate/quiz
+            Method: POST
 
   # ============================================================================
   # SCHEDULER LAMBDA (CRON)

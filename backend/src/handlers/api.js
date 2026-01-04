@@ -2,6 +2,7 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, PutCommand, QueryCommand, DeleteCommand, GetCommand } from "@aws-sdk/lib-dynamodb";
 import { v4 as uuidv4 } from 'uuid';
+import { generateSummary, generateQuiz } from '../utils/local_ai.js';
 
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
@@ -16,13 +17,25 @@ const headers = {
 export const handler = async (event) => {
   console.log("Event:", JSON.stringify(event));
   const { httpMethod, path, queryStringParameters, body } = event;
-  
+
   // NOTE: In a real app, use a middleware or separate handlers for routing.
   // For this MVP, a simple switch is enough.
 
   try {
     if (httpMethod === "POST" && path === "/alerts") {
       return await createAlert(JSON.parse(body));
+    }
+    if (httpMethod === "POST" && path === "/generate/summary") {
+      const { text } = JSON.parse(body);
+      if (!text) return { statusCode: 400, headers, body: JSON.stringify({ message: "Text required" }) };
+      const summary = await generateSummary(text);
+      return { statusCode: 200, headers, body: JSON.stringify({ summary }) };
+    }
+    if (httpMethod === "POST" && path === "/generate/quiz") {
+      const { text } = JSON.parse(body);
+      if (!text) return { statusCode: 400, headers, body: JSON.stringify({ message: "Text required" }) };
+      const quiz = await generateQuiz(text);
+      return { statusCode: 200, headers, body: JSON.stringify({ quiz }) };
     }
     if (httpMethod === "GET" && path === "/alerts") {
       return await listAlerts(queryStringParameters);
@@ -31,7 +44,7 @@ export const handler = async (event) => {
       const id = path.split("/").pop();
       return await deleteAlert(id, queryStringParameters);
     }
-    
+
     return {
       statusCode: 404,
       headers,
@@ -60,11 +73,11 @@ async function createAlert(data) {
 
   const id = uuidv4();
   const createdAt = new Date().toISOString();
-  
+
   // Create Item with Sparse GSI
   // Status is scheduled initially
   const userTimezone = timezone || "UTC"; // Default to UTC if not sent
-  
+
   const item = {
     PK: `USER#${email}`,
     SK: `ALERT#${id}`,
@@ -78,7 +91,7 @@ async function createAlert(data) {
     timezone: userTimezone,
     status: "scheduled",
     createdAt,
-    
+
     // GSI1 - Scheduler Index
     // GSI1PK = SCHED_DATE#{YYYY-MM-DD}
     // GSI1SK = TIMEZONE#{Region}#ALERT#{id} (Adding ID to make SK unique per user/timezone/alert)
@@ -112,11 +125,11 @@ async function listAlerts(queryParams) {
       ":pk": `USER#${email}`
     },
     // In MVP we can scan forward/backward. True = oldest first.
-    ScanIndexForward: false 
+    ScanIndexForward: false
   });
 
   const response = await docClient.send(command);
-  
+
   const items = response.Items.map(item => ({
     id: item.id,
     title: item.title,

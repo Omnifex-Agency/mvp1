@@ -37,27 +37,33 @@ async function processText({ text, type }) {
         }
 
         // 2. Fallback Mock (Simulation)
-        if (mode === 'summary') {
-            const cleanText = text.replace(/\s+/g, " ").substring(0, 40);
-            return `• [Simulation] Summary for: "${cleanText}..."
-• Local AI (Gemini Nano) is the lightweight model you requested.
-• It appears strictly for Chrome Canary/Dev users currently.
-• This placeholder ensures your layout works perfectly.`;
-        } else {
-            return `Q1: What model is lightweight?
-A) Gemini Nano (Local)
-B) Cloud GPT-4
-Answer: A
+        // 2. Fallback: Call Local Backend Service (Transformers.js)
+        try {
+            const endpoint = mode === 'summary'
+                ? 'http://localhost:3000/generate/summary'
+                : 'http://localhost:3000/generate/quiz';
 
-Q2: Why this simulation?
-A) Browser support missing
-B) API Error
-Answer: A
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text })
+            });
 
-Q3: Is data safe?
-A) Yes, local only
-B) No
-Answer: A`;
+            if (response.ok) {
+                const data = await response.json();
+                return mode === 'summary' ? data.summary : data.quiz;
+            } else {
+                console.error("Backend Error:", await response.text());
+                throw new Error("Backend failed");
+            }
+        } catch (err) {
+            console.log("Backend AI Error:", err);
+            // 3. Final Fallback (if backend is also down)
+            if (mode === 'summary') {
+                return `• [Backend Offline] Could not reach AI service.\n• Ensure 'node server.js' is running in backend/src.`;
+            } else {
+                return `Q1: Backend Status?\nA) Offline\nB) Online\nAnswer: A`;
+            }
         }
     };
 
