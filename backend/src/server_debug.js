@@ -4,20 +4,29 @@ import cors from 'cors';
 import bodyParser from 'body-parser';
 import { handler } from './handlers/api.js';
 
+process.on('uncaughtException', (err) => {
+    console.error('Uncaught Exception:', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+// Force event loop to stay alive just in case
+setInterval(() => {
+    // heartbeat
+}, 10000);
+
 const app = express();
 const PORT = 3000;
 
 app.use(cors());
 app.use(bodyParser.json());
 
-// Keep-alive for Windows/Node environment
-setInterval(() => { }, 10000);
-
-// Wrapper to convert Express req to Lambda event
 const lambdaWrapper = (httpMethod, resourcePath) => async (req, res) => {
     const event = {
         httpMethod,
-        path: resourcePath, // Use the fixed resource path, or req.path if strict mapping isn't needed
+        path: resourcePath,
         queryStringParameters: req.query,
         body: JSON.stringify(req.body),
         headers: req.headers
@@ -32,11 +41,9 @@ const lambdaWrapper = (httpMethod, resourcePath) => async (req, res) => {
     }
 };
 
-// Map routes from handler/api.js
 app.post('/alerts', lambdaWrapper('POST', '/alerts'));
 app.get('/alerts', lambdaWrapper('GET', '/alerts'));
 app.delete('/alerts/:id', async (req, res) => {
-    // Manually reconstruct path for delete
     const event = {
         httpMethod: 'DELETE',
         path: `/alerts/${req.params.id}`,
@@ -47,10 +54,14 @@ app.delete('/alerts/:id', async (req, res) => {
     res.status(result.statusCode).set(result.headers).send(result.body);
 });
 
-// AI Routes
 app.post('/generate/summary', lambdaWrapper('POST', '/generate/summary'));
 app.post('/generate/quiz', lambdaWrapper('POST', '/generate/quiz'));
 
-app.listen(PORT, () => {
-    console.log(`Backend server running locally at http://localhost:${PORT}`);
+const server = app.listen(PORT, () => {
+    console.log(`Debug server running locally at http://localhost:${PORT}`);
+    console.log(`Node Version: ${process.version}`);
+});
+
+server.on('close', () => {
+    console.log('Server closed');
 });
