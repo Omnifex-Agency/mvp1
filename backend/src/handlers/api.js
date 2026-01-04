@@ -1,12 +1,13 @@
 
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, PutCommand, QueryCommand, DeleteCommand, GetCommand } from "@aws-sdk/lib-dynamodb";
+import { createClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
 import { generateSummary, generateQuiz } from '../utils/local_ai.js';
 
-const client = new DynamoDBClient({});
-const docClient = DynamoDBDocumentClient.from(client);
-const TABLE_NAME = process.env.TABLE_NAME;
+// Configuration
+const SUPABASE_URL = "https://ztwcpkaunjtaftvdirqd.supabase.co";
+const SUPABASE_KEY = "sb_publishable_ku_dam8A40EUXl5ss8SQww_EX_MCmWB";
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const headers = {
   "Access-Control-Allow-Origin": "*",
@@ -18,13 +19,11 @@ export const handler = async (event) => {
   console.log("Event:", JSON.stringify(event));
   const { httpMethod, path, queryStringParameters, body } = event;
 
-  // NOTE: In a real app, use a middleware or separate handlers for routing.
-  // For this MVP, a simple switch is enough.
-
   try {
     if (httpMethod === "POST" && path === "/alerts") {
       return await createAlert(JSON.parse(body));
     }
+    // Keep these for standalone testing if needed
     if (httpMethod === "POST" && path === "/generate/summary") {
       const { text } = JSON.parse(body);
       if (!text) return { statusCode: 400, headers, body: JSON.stringify({ message: "Text required" }) };
@@ -71,43 +70,46 @@ async function createAlert(data) {
     };
   }
 
-  const id = uuidv4();
-  const createdAt = new Date().toISOString();
+  // 1. GENERATE AI CONTENT (if requested)
+  let finalContent = content;
+  let aiResult = "";
 
-  // Create Item with Sparse GSI
-  // Status is scheduled initially
-  const userTimezone = timezone || "UTC"; // Default to UTC if not sent
+  if (format === 'summary') {
+    console.log("Generating summary...");
+    aiResult = await generateSummary(content);
+    finalContent = `## 📝 AI Summary\n${aiResult}\n\n## 📄 Original Text\n${content}`;
+  } else if (format === 'quiz') {
+    console.log("Generating quiz...");
+    aiResult = await generateQuiz(content);
+    finalContent = `## 🧠 AI Quiz\n${aiResult}\n\n## 📄 Original Text\n${content}`;
+  }
 
-  const item = {
-    PK: `USER#${email}`,
-    SK: `ALERT#${id}`,
-    id,
-    userEmail: email,
-    title,
-    content,
-    sourceUrl,
-    format, // full, summary, quiz
-    reminderDate,
-    timezone: userTimezone,
-    status: "scheduled",
-    createdAt,
+  // 2. SAVE TO SUPABASE
+  const { data: savedData, error } = await supabase
+    .from('alerts')
+    .insert([
+      {
+        user_email: email,
+        title,
+        content: finalContent,
+        source_url: sourceUrl,
+        format,
+        reminder_date: reminderDate,
+        status: 'scheduled',
+        timezone: timezone || 'UTC'
+      }
+    ])
+    .select();
 
-    // GSI1 - Scheduler Index
-    // GSI1PK = SCHED_DATE#{YYYY-MM-DD}
-    // GSI1SK = TIMEZONE#{Region}#ALERT#{id} (Adding ID to make SK unique per user/timezone/alert)
-    GSI1PK: `SCHED_DATE#${reminderDate}`,
-    GSI1SK: `TIMEZONE#${userTimezone}#ALERT#${id}`
-  };
-
-  await docClient.send(new PutCommand({
-    TableName: TABLE_NAME,
-    Item: item
-  }));
+  if (error) {
+    console.error("Supabase Error:", error);
+    throw new Error(error.message);
+  }
 
   return {
     statusCode: 201,
     headers,
-    body: JSON.stringify({ id, message: "Alert saved successfully" })
+    body: JSON.stringify({ id: savedData[0]?.id, message: "Alert saved with AI generation!" })
   };
 }
 
@@ -117,27 +119,23 @@ async function listAlerts(queryParams) {
     return { statusCode: 400, headers, body: JSON.stringify({ message: "Email required" }) };
   }
 
-  // Get all alerts for the user
-  const command = new QueryCommand({
-    TableName: TABLE_NAME,
-    KeyConditionExpression: "PK = :pk",
-    ExpressionAttributeValues: {
-      ":pk": `USER#${email}`
-    },
-    // In MVP we can scan forward/backward. True = oldest first.
-    ScanIndexForward: false
-  });
+  const { data, error } = await supabase
+    .from('alerts')
+    .select('*')
+    .eq('user_email', email)
+    .order('created_at', { ascending: false });
 
-  const response = await docClient.send(command);
+  if (error) {
+    throw new Error(error.message);
+  }
 
-  const items = response.Items.map(item => ({
+  const items = data.map(item => ({
     id: item.id,
     title: item.title,
-    reminderDate: item.reminderDate,
+    reminderDate: item.reminder_date,
     format: item.format,
     status: item.status,
-    createdAt: item.createdAt
-    // Exclude content for list view to save bandwidth
+    createdAt: item.created_at
   }));
 
   const stats = {
@@ -154,19 +152,14 @@ async function listAlerts(queryParams) {
 }
 
 async function deleteAlert(id, queryParams) {
-  const email = queryParams?.email;
-  if (!email) {
-    return { statusCode: 400, headers, body: JSON.stringify({ message: "Email required" }) };
-  }
+  const { error } = await supabase
+    .from('alerts')
+    .delete()
+    .eq('id', id);
 
-  // DynamoDB Delete
-  await docClient.send(new DeleteCommand({
-    TableName: TABLE_NAME,
-    Key: {
-      PK: `USER#${email}`,
-      SK: `ALERT#${id}`
-    }
-  }));
+  if (error) {
+    throw new Error(error.message);
+  }
 
   return {
     statusCode: 200,

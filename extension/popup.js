@@ -7,8 +7,8 @@
 // OR simpler: Use raw fetch since Supabase API is just REST. 
 // For "Principal Architect" level, we use raw fetch to avoid bundling issues without Webpack.
 
-const SUPABASE_URL = "https://ztwcpkaunjtaftvdirqd.supabase.co";
-const SUPABASE_KEY = "sb_publishable_ku_dam8A40EUXl5ss8SQww_EX_MCmWB";
+// Local Backend URL
+const BACKEND_URL = "http://localhost:8080";
 
 document.addEventListener('DOMContentLoaded', async () => {
     // If opened as a window, ensure size (sometimes chrome.windows.create is buggy on size)
@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         checkAI();
     } else {
         showView('main-view');
-        checkAI();
+        showView('main-view');
         // Prefill
         if (storage.draftSelection) {
             document.getElementById('content').value = storage.draftSelection;
@@ -80,78 +80,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.selectedOffset = null;
     });
 
-    // AI Listeners
-    document.getElementById('ai-summary-btn').addEventListener('click', () => runAITask('summary'));
-    document.getElementById('ai-quiz-btn').addEventListener('click', () => runAITask('quiz'));
+    // AI Listeners Removed
 });
 
-async function checkAI() {
-    try {
-        if (!window.ai) return;
 
-        // Check capabilities
-        const canSummarize = await window.ai.canCreateTextSession();
-        if (canSummarize === 'readily') {
-            document.getElementById('ai-tools').classList.remove('hidden');
-        }
-    } catch (e) {
-        console.log("AI check failed", e);
-    }
-}
-
-// Always show AI tools
-document.getElementById('ai-tools').classList.remove('hidden');
-
-async function runAITask(type) {
-    const contentEl = document.getElementById('content');
-    const longText = contentEl.value;
-
-    const btnId = type === 'summary' ? 'ai-summary-btn' : 'ai-quiz-btn';
-    const btn = document.getElementById(btnId);
-
-    if (!longText || longText.length < 10) {
-        alert("Text too short for AI!");
-        return;
-    }
-
-    const originalText = btn.innerHTML;
-    btn.textContent = "Processing...";
-    btn.disabled = true;
-
-    try {
-        const response = await chrome.runtime.sendMessage({
-            action: 'trigger_ai_processing',
-            data: {
-                text: longText,
-                type: type
-            }
-        });
-
-        if (response && response.success) {
-            // New Architecture: Receive Text, Don't Save Yet
-            // The result is in response.data.result (for single ops)
-            // or response.data.summary/quiz (for compound, but popup only asks for single)
-
-            const resultText = response.data.result;
-            contentEl.value = resultText;
-
-            // Auto-select radio
-            const radioParams = type === 'summary' ? 'summary' : 'quiz';
-            const radio = document.querySelector(`input[name="format"][value="${radioParams}"]`);
-            if (radio) radio.checked = true;
-
-        } else {
-            contentEl.value = longText + "\n\n[Error: " + (response?.error || 'Unknown') + "]";
-        }
-
-    } catch (e) {
-        console.error("AI Error:", e);
-        contentEl.value = longText + "\n\n[Communication Failed: " + e.message + "]";
-    } finally {
-        btn.innerHTML = originalText;
-        btn.disabled = false;
-    }
-}
 
 function showView(id) {
     document.querySelectorAll('.view').forEach(el => el.classList.add('hidden'));
@@ -203,23 +135,20 @@ async function saveAlert() {
     }
 
     const payload = {
-        user_email: storage.email || "anonymous@omnifex.com",
+        email: storage.email || "anonymous@omnifex.com",
         title: title || "Untitled Snippet",
         content,
-        source_url: window.currentUrl || "",
-        format,
-        reminder_date: reminderDate,
-        status: 'scheduled',
+        sourceUrl: window.currentUrl || "",
+        format, // 'full', 'summary', 'quiz'
+        reminderDate,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
     };
+
     try {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/alerts`, {
+        const res = await fetch(`${BACKEND_URL}/alerts`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'apikey': SUPABASE_KEY,
-                'Authorization': `Bearer ${SUPABASE_KEY}`,
-                'Prefer': 'return=minimal'
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify(payload)
         });

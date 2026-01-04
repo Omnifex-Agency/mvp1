@@ -8,6 +8,7 @@
     "@aws-sdk/client-dynamodb": "^3.400.0",
     "@aws-sdk/client-ses": "^3.400.0",
     "@aws-sdk/lib-dynamodb": "^3.400.0",
+    "@supabase/supabase-js": "^2.89.0",
     "@xenova/transformers": "^2.17.2",
     "body-parser": "^2.2.1",
     "cors": "^2.8.5",
