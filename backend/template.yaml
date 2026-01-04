@@ -1,0 +1,128 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  HighlightAgent MVP Backend
+  Serverless architecture for Browser Extension + Email Reminder system.
+
+Globals:
+  Function:
+    Timeout: 15
+    Runtime: nodejs20.x
+    Architectures:
+      - x86_64
+    Environment:
+      Variables:
+        TABLE_NAME: !Ref HighlightAgentTable
+        # We will map this to a parameter or env var during deployment
+        # For now, we assume it's available in the environment
+        OPENAI_API_KEY: !Ref OpenAIKey
+
+Parameters:
+  OpenAIKey:
+    Type: String
+    Description: OpenAI API Key for summarization
+    NoEcho: true
+    Default: "PLACEHOLDER_KEY" 
+
+Resources:
+  # ============================================================================
+  # DYNAMODB TABLE
+  # ============================================================================
+  HighlightAgentTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: HighlightAgentAlerts
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+        - AttributeName: GSI1PK
+          AttributeType: S
+        - AttributeName: GSI1SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: SchedulerIndex
+          KeySchema:
+            - AttributeName: GSI1PK
+              KeyType: HASH
+            - AttributeName: GSI1SK
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
+  # ============================================================================
+  # API GATEWAY & LAMBDA (CRUD)
+  # ============================================================================
+  HighlightAgentApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      Cors:
+        AllowMethods: "'*'"
+        AllowHeaders: "'*'"
+        AllowOrigin: "'*'"
+
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers/api.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref HighlightAgentTable
+      Events:
+        CreateAlert:
+          Type: Api
+          Properties:
+            RestApiId: !Ref HighlightAgentApi
+            Path: /alerts
+            Method: POST
+        ListAlerts:
+          Type: Api
+          Properties:
+            RestApiId: !Ref HighlightAgentApi
+            Path: /alerts
+            Method: GET
+        DeleteAlert:
+          Type: Api
+          Properties:
+            RestApiId: !Ref HighlightAgentApi
+            Path: /alerts/{id}
+            Method: DELETE
+
+  # ============================================================================
+  # SCHEDULER LAMBDA (CRON)
+  # ============================================================================
+  SchedulerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers/scheduler.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref HighlightAgentTable
+        - SESCrudPolicy:
+            IdentityName: "*" # Restrict this in production
+      Events:
+        HourlyTrigger:
+          Type: Schedule
+          Properties:
+            Schedule: cron(0 * * * ? *) # Runs every hour at minute 0
+            Name: HourlyCheck
+            Description: Checks for alerts due in the current timezone hour
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref HighlightAgentTable
+          # SENDER_EMAIL: !Ref SenderEmailParam # (Add param later)
+
+Outputs:
+  ApiUrl:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "https://${HighlightAgentApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"

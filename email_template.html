@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Omnifex - Learning Saved</title>
+    <style>
+        /* Reset & Base */
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #0d0d0f;
+            font-family: 'Times New Roman', Times, serif;
+            color: #333;
+        }
+
+        table {
+            border-spacing: 0;
+            width: 100%;
+        }
+
+        td {
+            padding: 0;
+        }
+
+        img {
+            border: 0;
+        }
+
+        /* Container */
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #0d0d0f;
+            padding: 40px 20px;
+        }
+
+        /* Card */
+        .card {
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Header */
+        .header {
+            background-color: #18181b;
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid #27272a;
+        }
+
+        .logo {
+            color: #fff;
+            font-family: Helvetica, Arial, sans-serif;
+            font-weight: bold;
+            font-size: 20px;
+            letter-spacing: -0.5px;
+            text-decoration: none;
+        }
+
+        /* Content */
+        .content-area {
+            padding: 40px 30px;
+        }
+
+        .meta {
+            font-family: Helvetica, Arial, sans-serif;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #666;
+            margin-bottom: 20px;
+            display: block;
+        }
+
+        .title {
+            font-family: Helvetica, Arial, sans-serif;
+            font-size: 24px;
+            font-weight: bold;
+            color: #111;
+            margin: 0 0 15px 0;
+            line-height: 1.3;
+        }
+
+        .body-text {
+            font-size: 18px;
+            line-height: 1.6;
+            color: #333;
+            margin-bottom: 30px;
+            white-space: pre-wrap;
+        }
+
+        /* Button */
+        .btn-container {
+            text-align: center;
+            margin-top: 30px;
+            border-top: 1px solid #eee;
+            padding-top: 30px;
+        }
+
+        .btn {
+            background-color: #000;
+            color: #fff;
+            padding: 14px 28px;
+            text-decoration: none;
+            font-family: Helvetica, Arial, sans-serif;
+            font-weight: bold;
+            font-size: 14px;
+            border-radius: 6px;
+            display: inline-block;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding-top: 30px;
+            font-family: Helvetica, Arial, sans-serif;
+            font-size: 12px;
+            color: #555;
+        }
+
+        .footer a {
+            color: #555;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+
+        <div class="card">
+            <div class="header">
+                <span class="logo">Omnifex</span>
+            </div>
+
+            <div class="content-area">
+                <span class="meta">Reminder • {{format}}</span>
+                <h1 class="title">{{title}}</h1>
+
+                <div class="body-text">
+                    {{content}}
+                </div>
+
+                <div class="btn-container">
+                    <a href="https://your-dashboard-url.com" class="btn">Open in Dashboard</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Sent by Omnifex • Your Second Brain</p>
+            <p><a href="#">Unsubscribe</a></p>
+        </div>
+
+    </div>
+
+</body>
+
+</html>
