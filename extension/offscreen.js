@@ -40,8 +40,8 @@ async function processText({ text, type }) {
         // 2. Fallback: Call Local Backend Service (Transformers.js)
         try {
             const endpoint = mode === 'summary'
-                ? 'http://localhost:3000/generate/summary'
-                : 'http://localhost:3000/generate/quiz';
+                ? 'http://localhost:3001/generate/summary'
+                : 'http://localhost:3001/generate/quiz';
 
             const response = await fetch(endpoint, {
                 method: 'POST',
